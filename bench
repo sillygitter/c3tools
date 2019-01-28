@@ -1,11 +1,41 @@
 #!/bin/bash
 
+# Copyright 2019 Matthew Ling (sillygit@protonmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #Automated benchmarking with mlucas for big.LITTLE architectures.
-#Assumes environment is as follows (the setup script helps do this):
+#
+#Assumes environment is setup as follows:
 # * mlucas binary located at ~/mlucas
-# * ~/primary and ~/secondary directories present containing mlucas.cfg and cpu from setup phase
-# * Temperature plotter at ~/plotter
-# plotter requires 'sensors', probably acquired via 'lm-sensors'
+# * Cluster directories present for each cluster of cores (most big.LITTLE
+#   devices will have two clusters with corresponding ~/primary, ~/secondary
+#   cluster directories. Some new SoCs have three clusters, use ~/tertiary)
+# * Each cluster directory needs an mlucas.cfg (created when the other clusters
+#   are under load in an attempt to keep the tests on the cluster we want,
+#   phones have a habit of swapping processes between clusters)
+# * Each cluster directory needs a cpu file specifing the cores corresponding
+#   to the cluster. The contents are given verbatim to mlucas's -cpu flag,
+#   so for example '0,1,2,3' or '0:3' specifies the first four cores
+# * ~/results directory not present, this directory is used to gather the
+#   results and the script exits if it's already present to avoid mixing up
+#   benchmark data
+# * Temperature plotter at ~/c3tools/plotter
+# * plotter requires 'sensors', probably acquired via 'lm-sensors'. If your
+#   device does not have sensors installed, comment out the plotter references
+#
+# The setup script helps set up the environment in this manner
 
 #Directory to store results
 resdir="results"
@@ -30,17 +60,18 @@ if [ -d ~/primary ]; then cluster+=(primary); fi
 if [ -d ~/secondary ]; then cluster+=(secondary); fi
 if [ -d ~/tertiary ]; then cluster+=(tertiary); fi
 if [ -d ~/quaternary ]; then cluster+=(quaternary); fi
+if [ -d ~/quinary ]; then cluster+=(quinary); fi
+if [ -d ~/senary ]; then cluster+=(senary); fi
+if [ -d ~/septenary ]; then cluster+=(septenary); fi
+if [ -d ~/octonary ]; then cluster+=(octonary); fi
+
 clustercount=${#cluster[@]}
 
 #Check environment is in order
-if [ ! -f ~/plotter ]; then echo "plotter missing, possible setup error" && exit 1; fi
+if [ ! -f ~/c3tools/plotter ]; then echo "plotter missing, possible setup error" && exit 1; fi
 for (( j=0; j<${clustercount}; j++ )); do
- if [ -d ~/${cluster[$j]} ]; then
-  if [ ! -e ~/${cluster[$j]}/mlucas.cfg ]; then echo "${cluster[$j]} mlucas.cfg missing, possible setup error" && exit 1; fi
-  if [ ! -f ~/${cluster[$j]}/cpu ]; then echo "${cluster[$j]} cpu config missing, possible setup error" && exit 1; fi
- else
-  echo "${cluster[$j]} directory missing, possible setup error" && exit 1
- fi
+ if [ ! -e ~/${cluster[$j]}/mlucas.cfg ]; then echo "${cluster[$j]} mlucas.cfg missing, possible setup error" && exit 1; fi
+ if [ ! -f ~/${cluster[$j]}/cpu ]; then echo "${cluster[$j]} cpu config missing, possible setup error" && exit 1; fi
 done
 
 #Prep worktodo for benchmarking
@@ -56,7 +87,7 @@ for (( i=0; i<${testcount}; i++ )); do
  echo "Test=${exponent[$i]}" >worktodo.ini
 
  #Start plotter
- ~/plotter "${resdir}/p${exponent[$i]}.temps" &
+ ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
 
  #Start clusters
  for (( j=0; j<${clustercount}; j++ )); do
@@ -79,7 +110,7 @@ for (( i=0; i<${testcount}; i++ )); do
   #mlucas.cfg
   cp ~/${cluster[$j]}/mlucas.cfg ~/${resdir}/mlucas.${cluster[$j]}.cfg
   #results
-  mv ~/${cluster[$j]}/p${exponent[$i]}.stat ~/${resdir}/p${fft[$i]}K.${cluster[$j]}.stat
+  mv ~/${cluster[$j]}/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.${cluster[$j]}.stat
   #Cleanup residuals
   rm ~/${cluster[$j]}/*${exponent[$i]}
  done
