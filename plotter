@@ -4,7 +4,7 @@
 # Used by the bench script
 while true
 do
- date>>~/$1 && sensors>>~/$1
+ date>>$1 && sensors>>$1
  sleep 60
 done
 
