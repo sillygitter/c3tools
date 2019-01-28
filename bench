@@ -52,7 +52,7 @@ clusterpoolcount=${#clusterpool[@]}
 
 # Create results dir, or early exit if it already exists
 if [ -d ~/${resdir} ]; then
- echo "benchmark-results directory already exists, exiting to avoid a mess"
+ echo "~/${resdir} directory already exists, exiting to avoid a mess"
  exit 1
 else
  mkdir ~/${resdir}
