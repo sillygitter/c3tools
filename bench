@@ -93,7 +93,7 @@ cat /proc/version > ~/results/proc.version
 for (( i=0; i<${testcount}; i++ )); do
 
  # Edit worktodo
- echo "Test=${exponent[$i]}" >worktodo.ini
+ echo "Test=${exponent[$i]}" >~/worktodo.ini
 
  # Start plotter
  ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
