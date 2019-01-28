@@ -96,7 +96,7 @@ for (( i=0; i<${testcount}; i++ )); do
  echo "Test=${exponent[$i]}" >~/worktodo.ini
 
  # Start plotter
- ~/c3tools/plotter "~/${resdir}/${fft[$i]}K.temps" &
+ ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
 
  # Start clusters
  for (( j=0; j<${clustercount}; j++ )); do
