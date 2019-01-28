@@ -1,0 +1,10 @@
+#!/bin/bash
+# Copyright 2019 Matthew Ling (sillygit@protonmail.com)
+# Dump timestamped temperature sensor data to file
+# Used by the bench script
+while true
+do
+ date>>~/$1 && sensors>>~/$1
+ sleep 60
+done
+
