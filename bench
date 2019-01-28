@@ -51,11 +51,11 @@ clusterpool=(primary secondary tertiary quaternary quinary senary septenary octo
 clusterpoolcount=${#clusterpool[@]}
 
 # Create results dir, or early exit if it already exists
-if [ -d ${resdir} ]; then
+if [ -d ~/${resdir} ]; then
  echo "benchmark-results directory already exists, exiting to avoid a mess"
  exit 1
 else
- mkdir ${resdir}
+ mkdir ~/${resdir}
 fi
 
 # Find cluster directories present
@@ -96,7 +96,7 @@ for (( i=0; i<${testcount}; i++ )); do
  echo "Test=${exponent[$i]}" >~/worktodo.ini
 
  # Start plotter
- ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
+ ~/c3tools/plotter "~/${resdir}/${fft[$i]}K.temps" &
 
  # Start clusters
  for (( j=0; j<${clustercount}; j++ )); do
@@ -124,4 +124,4 @@ for (( i=0; i<${testcount}; i++ )); do
 done
 
 tar -f ~/${resdir}.tar ~/${resdir}
-echo "Benchmarking complete, consider uploading ${resdir}.tar to mersenneforum.org to share the results"
+echo "Benchmarking complete, consider uploading ~/${resdir}.tar to mersenneforum.org to share the results"
