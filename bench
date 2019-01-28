@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#Automated benchmarking with mlucas for big.LITTLE architectures.
+# Automated benchmarking with mlucas for big.LITTLE architectures.
 #
-#Assumes environment is setup as follows:
+# Assumes environment is setup as follows:
 # * mlucas binary located at ~/mlucas
 # * Cluster directories present for each cluster of cores (most big.LITTLE
 #   devices will have two clusters with corresponding ~/primary, ~/secondary
@@ -37,16 +37,20 @@
 #
 # The setup script helps set up the environment in this manner
 
-#Directory to store results
+# Directory to store results
 resdir="results"
 
-#Define simultaneous tests
+# Test definitions
 fft=(1024 2560 4608 7680 18432)
 exponent=(20000047 49005071 87068977 143472073 332220523)
 duration=(3600 7200 10800 14400 36000)
 testcount=${#fft[@]}
 
-#Create results dir, or early exit if it already exists
+# Potential cluster directories
+clusterpool=(primary secondary tertiary quaternary quinary senary septenary octonary)
+clusterpoolcount=${#clusterpool[@]}
+
+# Create results dir, or early exit if it already exists
 if [ -d ${resdir} ]; then
  echo "benchmark-results directory already exists, exiting to avoid a mess"
  exit 1
@@ -54,64 +58,66 @@ else
  mkdir ${resdir}
 fi
 
-#Find clusters from environment
+# Find cluster directories present
 cluster=()
-if [ -d ~/primary ]; then cluster+=(primary); fi
-if [ -d ~/secondary ]; then cluster+=(secondary); fi
-if [ -d ~/tertiary ]; then cluster+=(tertiary); fi
-if [ -d ~/quaternary ]; then cluster+=(quaternary); fi
-if [ -d ~/quinary ]; then cluster+=(quinary); fi
-if [ -d ~/senary ]; then cluster+=(senary); fi
-if [ -d ~/septenary ]; then cluster+=(septenary); fi
-if [ -d ~/octonary ]; then cluster+=(octonary); fi
+for (( j=0; j<${clusterpoolcount}; j++ )); do
+ if [ -d ~/${clusterpool[$j]} ]; then cluster+=(${clusterpool[$j]}); fi
+done
 
 clustercount=${#cluster[@]}
 
-#Check environment is in order
+# Check environment is in order
 if [ ! -f ~/c3tools/plotter ]; then echo "plotter missing, possible setup error" && exit 1; fi
 for (( j=0; j<${clustercount}; j++ )); do
  if [ ! -e ~/${cluster[$j]}/mlucas.cfg ]; then echo "${cluster[$j]} mlucas.cfg missing, possible setup error" && exit 1; fi
  if [ ! -f ~/${cluster[$j]}/cpu ]; then echo "${cluster[$j]} cpu config missing, possible setup error" && exit 1; fi
 done
 
-#Prep worktodo for benchmarking
 for (( j=0; j<${clustercount}; j++ )); do
+ # Prep worktodo for benchmarking
  if [ -f ~/${cluster[$j]}/worktodo.ini ]; then rm ~/${cluster[$j]}/worktodo.ini; fi
  ln -s ~/worktodo.ini ~/${cluster[$j]}/worktodo.ini
+
+ # Gather mlucas.cfg into results
+ cp ~/${cluster[$j]}/mlucas.cfg ~/${resdir}/mlucas.${cluster[$j]}.cfg
+
+ # Gather cluster topology into results 
+ echo "${cluster[$j]}" >>~/${resdir}/cluster.cfg
 done
 
-#Do tests
+# Copy environment vitals into results
+cat /proc/cpuinfo > ~/results/proc.cpuinfo
+cat /proc/version > ~/results/proc.version
+
+# Do tests
 for (( i=0; i<${testcount}; i++ )); do
 
- #Edit worktodo
+ # Edit worktodo
  echo "Test=${exponent[$i]}" >worktodo.ini
 
- #Start plotter
+ # Start plotter
  ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
 
- #Start clusters
+ # Start clusters
  for (( j=0; j<${clustercount}; j++ )); do
   cd ~/${cluster[$j]} && ~/mlucas -cpu $(cat ~/${cluster[$j]}/cpu) &
   sleep 1
  done
 
- #Sleep for test duration
+ # Sleep for test duration
  sleep 3
  date
  echo "Executing FFT ${fft[$i]}K, exponent ${exponent[$i]}, duration ~${duration[$i]} seconds"
  sleep ${duration[$i]}
 
- #Kill test
+ # Kill test
  pkill mlucas
  pkill plotter
 
- #Gather results and cleanup residuals
  for (( j=0; j<${clustercount}; j++ )); do
-  #mlucas.cfg
-  cp ~/${cluster[$j]}/mlucas.cfg ~/${resdir}/mlucas.${cluster[$j]}.cfg
-  #results
+  # Gather results
   mv ~/${cluster[$j]}/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.${cluster[$j]}.stat
-  #Cleanup residuals
+  # Cleanup residuals
   rm ~/${cluster[$j]}/*${exponent[$i]}
  done
 
