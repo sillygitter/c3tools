@@ -123,5 +123,11 @@ for (( i=0; i<${testcount}; i++ )); do
 
 done
 
+# Remove worktodo references
+rm ~/worktodo.ini
+for (( j=0; j<${clustercount}; j++ )); do
+ rm ~/${cluster[$j]}/worktodo.ini
+done
+
 tar --create -f ~/${resdir}.tar ~/${resdir}
 echo "Benchmarking complete, consider uploading ~/${resdir}.tar to mersenneforum.org to share the results"
