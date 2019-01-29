@@ -123,5 +123,5 @@ for (( i=0; i<${testcount}; i++ )); do
 
 done
 
-tar -f ~/${resdir}.tar ~/${resdir}
+tar --create -f ~/${resdir}.tar ~/${resdir}
 echo "Benchmarking complete, consider uploading ~/${resdir}.tar to mersenneforum.org to share the results"
