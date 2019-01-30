@@ -31,6 +31,12 @@ clusterpoolcount=${#clusterpool[@]}
 
 if [ $# -gt 8 ]; then echo "Too many arguments, up to 8 clusters are supported" && exit 1; fi
 
+echo "Pass this script the devices cluster configuration and it will setup the"
+echo "environment accordingly. It creates the cluster directories, generates"
+echo "mlucas.cfg for each cluster with the other clusters under load, and edits"
+echo "the timings to account for likely erroneous results likely generated as a"
+echo "result of an overly aggressive governor."
+
 # Prep environment for mlucas.cfg generation
 # $$i (or any permutation tried) with for example i=1 is not equivalent to $1, so do it this way
 argindex=0
