@@ -36,6 +36,12 @@ echo "environment accordingly. It creates the cluster directories, generates"
 echo "mlucas.cfg for each cluster with the other clusters under load, and edits"
 echo "the timings to account for likely erroneous results likely generated as a"
 echo "result of an overly aggressive governor."
+echo ""
+echo "The cluster configuration is passed verbatim to the cpu flag of mlucas. For"
+echo "example 'setup 0,1,2,3 4,5' defines two clusters, the first using the first"
+echo "four cores, the second using the 5th and 6th. It can equivalently be defined"
+echo "as 'setup 0:3 4,5', in which case one worker is executed with '-cpu 0:3',"
+echo "the other '-cpu 4,5'."
 
 # Prep environment for mlucas.cfg generation
 # $$i (or any permutation tried) with for example i=1 is not equivalent to $1, so do it this way
@@ -73,6 +79,11 @@ for (( i=0; i<$#; i++ )); do
  # an aggressive governor does not cause inefficient FFTs to be used
  perl -pe 'BEGIN{$A=1;} s/ ...\d\.\d\d /$A++/ge' ~/${clusterpool[$i]}/mlucas.cpy | perl -pe 's/msec\/iter =/msec\/iter = /g' >~/${clusterpool[$i]}/mlucas.cfg
 
+done
+
+# Cleanup files generated from dummy work
+for (( i=0; i<$#; i++ )); do
+ rm ~/${clusterpool[$i]}/p20000047.stat ~/${clusterpool[$i]}/worktodo.ini ~/${clusterpool[$i]}/p20000047 ~/${clusterpool[$i]}/q20000047 ~/${clusterpool[$i]}/results.txt
 done
 
 echo "End of setup."
