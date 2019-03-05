@@ -25,9 +25,6 @@
 # work. Run primenet.py with --workdir ~/.c3/ and --numcache double the total
 # number of clusters being administered
 
-# WARNING: Currently incomplete and untested. This script is not ready for
-# actual use yet
-
 # Find fresh job (one that is in pool's worktodo but not assigned to a node) and assign it
 function getfreshjob {
   # $1 is the node, $2 is the cluster. Other variables are helpfully global
@@ -78,22 +75,22 @@ fi
 user=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .user' | tr '\n' ' ' | tr -d '\"'))
 address=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .address' | tr '\n' ' ' | tr -d '\"'))
 port=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .port' | tr '\n' ' ' | tr -d '\"'))
-clusters=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .clusters' | tr '\n' ' ' | tr -d '\"'))
+workers=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .clusters' | tr '\n' ' ' | tr -d '\"'))
 
 donesomething=0
 
 # Validate config data
-if [ ${#user[@]} -ne ${#address[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
-if [ ${#user[@]} -ne ${#port[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
-if [ ${#user[@]} -ne ${#clusters[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
+if [ ${#user[@]} -ne ${#address[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and worker count defined">>~/.c3/c4.log && exit 1; fi
+if [ ${#user[@]} -ne ${#port[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and worker count defined">>~/.c3/c4.log && exit 1; fi
+if [ ${#user[@]} -ne ${#workers[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and worker count defined">>~/.c3/c4.log && exit 1; fi
 
 echo "Pass 1"
 # First pass: Make an aggregate of all jobs in all node queues
 if [ -f ~/.c3/worktodo.aggregate ]; then rm ~/.c3/worktodo.aggregate; fi
 touch ~/.c3/worktodo.aggregate
 for (( i=0; i<${#user[@]}; i++ )); do
-  for (( j=0; j<${clusters[$i]}; j++ )); do
-    # Copy clusters worktodo into local temp file
+  for (( j=0; j<${workers[$i]}; j++ )); do
+    # Copy workers worktodo into local temp file
     if [ -f ~/.c3/worktodo.tmp ]; then rm ~/.c3/worktodo.tmp; fi
     scp -P ${port[$i]} ${user[$i]}@${address[$i]}:~/$j/worktodo.ini ~/.c3/worktodo.tmp
     if [ -f ~/.c3/worktodo.tmp ]; then cat ~/.c3/worktodo.tmp>>~/.c3/worktodo.aggregate; fi
@@ -106,10 +103,10 @@ echo "Pass 2"
 #   jobs to worktodo create a copy at worktodo.c4 so that we know which jobs get completed
 # * If worktodo has one job copy results to primenet results, remove top line of worktodo.c4 from primenet
 #   worktodo, find a job in primenet worktodo that's not in worktodo.aggregate and add it to the aggregate
-#   and this clusters worktodo
+#   and this workers worktodo
 # * If worktodo has two jobs, check that mlucas is running and start it if it's not
 for (( i=0; i<${#user[@]}; i++ )); do
-  for (( j=0; j<${clusters[$i]}; j++ )); do
+  for (( j=0; j<${workers[$i]}; j++ )); do
     # Create cluster worktodo if it doesn't exist
     ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "touch ~/$j/worktodo.ini"
     # Copy cluster worktodo to controller
@@ -157,7 +154,7 @@ for (( i=0; i<${#user[@]}; i++ )); do
   done
 done
 
-if [ $donesomething -eq 0 ]; then echo "All clusters have full queues and mlucas is running, nothing to do">>~/.c3/c4.log; fi
+if [ $donesomething -eq 0 ]; then echo "All workers have full queues and mlucas is running, nothing to do">>~/.c3/c4.log; fi
 
 # Cleanup temp files
 if [ -f ~/.c3/cpu.tmp ]; then rm ~/.c3/cpu.tmp; fi
