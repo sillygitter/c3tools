@@ -22,17 +22,17 @@
 # assumptions which may apply only to big.LITTLE devices
 
 # Sets up an environment for primality testing on big.LITTLE devices
-# This includes creating the cluster directories and generating the mlucas.cfg
+# This includes creating the worker directories and generating the mlucas.cfg
 # files
 
 echo "Pass this script the worker configuration to use and it will set up the"
 echo "environment accordingly. It creates the worker directories, generates"
-echo "mlucas.cfg for each cluster with the other workers under load, and edits"
+echo "mlucas.cfg for each worker with the other workers under load, and edits"
 echo "the timings to account for likely erroneous results likely generated as a"
 echo "result of an overly aggressive governor."
 echo ""
-echo "The cluster configuration is passed verbatim to the cpu flag of mlucas. For"
-echo "example 'setup 0,1,2,3 4,5' defines two clusters, the first using the first"
+echo "The worker configuration is passed verbatim to the cpu flag of mlucas. For"
+echo "example 'setup 0,1,2,3 4,5' defines two workers, the first using the first"
 echo "four cores, the second using the 5th and 6th. It can equivalently be defined"
 echo "as 'setup 0:3 4,5', in which case one worker is executed with '-cpu 0:3',"
 echo "the other '-cpu 4,5'."
@@ -41,13 +41,13 @@ echo "the other '-cpu 4,5'."
 # $$i (or any permutation tried) with for example i=1 is not equivalent to $1, so do it this way
 argindex=0
 for cpu in "$@"; do
-	# Check that cluster directory doesn't exist
+	# Check that worker directory doesn't exist
 	if [ -d ~/$argindex ]; then echo "$argindex directory already exists, exiting to avoid making a mess" && exit 1; fi
 	# Create directory
 	mkdir ~/$argindex
 	# Read CPU info from args passed to this script
 	echo "$cpu">~/$argindex/cpu
-	# Create a dummy mlucas.cfg and worktodo to keep this cluster busy whilst generating mlucas.cfg for other clusters
+	# Create a dummy mlucas.cfg and worktodo to keep this worker busy whilst generating mlucas.cfg for other workers
 	echo "      1024  msec/iter =   42.42  ROE[avg,max] = [0.231563895, 0.281250000]  radices =  64 32 16 16  0  0  0  0  0  0">~/$argindex/mlucas.cfg
 	echo "Test=20000047">~/$argindex/worktodo.ini
 	argindex=$((argindex+1))
@@ -55,9 +55,9 @@ done
 
 if [ ! -f ~/mlucas ]; then echo "Error: ~/mlucas not present, cannot generate mlucas.cfg" && exit 1; fi
 
-# Create mlucas.cfg file for each cluster one at a time
+# Create mlucas.cfg file for each worker one at a time
 for (( i=0; i<$#; i++ )); do
-	# Start dummy jobs on the other clusters to simulate realistic work conditions and to try to keep config generation on the correct cluster
+	# Start dummy jobs on the other workers to simulate realistic work conditions and to try to keep config generation on the correct cores
 	for (( j=0; j<$#; j++ )); do
 		if [ $i -ne $j ]; then
 			cd ~/$j && ~/mlucas -cpu $(cat ~/$j/cpu) &
