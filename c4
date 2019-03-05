@@ -23,7 +23,7 @@
 # Aggregates nodes into a shared worktodo.ini and results.txt pool.
 # primenet.py can and probably should be used to automate sending/receiving
 # work. Run primenet.py with --workdir ~/.c3/ and --numcache double the total
-# number of clusters being administered
+# number of workers being administered
 
 # Find fresh job (one that is in pool's worktodo but not assigned to a node) and assign it
 function getfreshjob {
@@ -63,7 +63,7 @@ if [ ! -f ~/.c3/c4.cfg ]; then
   echo -e "\t\t\t\"user\": \"\"," >>~/.c3/c4.cfg
   echo -e "\t\t\t\"address\": \"\"," >>~/.c3/c4.cfg
   echo -e "\t\t\t\"port\": \"\"," >>~/.c3/c4.cfg
-  echo -e "\t\t\t\"clusters\": 0" >>~/.c3/c4.cfg
+  echo -e "\t\t\t\"workers\": 0" >>~/.c3/c4.cfg
   echo -e "\t\t}" >>~/.c3/c4.cfg
   echo -e "\t]" >>~/.c3/c4.cfg
   echo -e "}" >>~/.c3/c4.cfg
@@ -75,7 +75,7 @@ fi
 user=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .user' | tr '\n' ' ' | tr -d '\"'))
 address=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .address' | tr '\n' ' ' | tr -d '\"'))
 port=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .port' | tr '\n' ' ' | tr -d '\"'))
-workers=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .clusters' | tr '\n' ' ' | tr -d '\"'))
+workers=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .workers' | tr '\n' ' ' | tr -d '\"'))
 
 donesomething=0
 
