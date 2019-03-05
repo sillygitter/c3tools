@@ -22,5 +22,8 @@ This script benchmarks with simultaneous tests on each cluster at key FFT length
 * Ten hours of simultaneous 18432K FFT
 From these results the combined throughput of the SoC at each FFT length can be calculated.
 
+## c4 script - Cellphone Compute Cluster Controller
+To be executed periodically on a computer that can connect to the devices over ssh. Adds work and copies results to/from nodes into its own pool. Doesn't communicate with primenet directly, to be fully automated primenet.py should also be running on the controlling PC using the working directory of c4 as the source.
+
 ## plotter script
 A simple script that periodically dumps temperature data from the 'sensors' command to file. Used by the bench script, can be used on its own.
