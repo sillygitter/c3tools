@@ -19,13 +19,11 @@
 #
 # Assumes environment is setup as follows:
 # * mlucas binary located at ~/mlucas
-# * Cluster directories present for each cluster of cores (most big.LITTLE
-#   devices will have two clusters with corresponding ~/primary, ~/secondary
-#   cluster directories. Some new SoCs have three clusters, use ~/tertiary)
-# * Each cluster directory needs an mlucas.cfg (created when the other clusters
-#   are under load in an attempt to keep the tests on the cluster we want,
-#   phones have a habit of swapping processes between clusters)
-# * Each cluster directory needs a cpu file specifing the cores corresponding
+# * Worker directories numbered from 0
+# * Each worker directory needs an mlucas.cfg (ideally created when the other
+#   workers are under load in an attempt to keep the tests on the cores we want,
+#   these devices have a habit of ignoring core pinning requests)
+# * Each worker directory needs a cpu file specifing the cores corresponding
 #   to the cluster. The contents are given verbatim to mlucas's -cpu flag,
 #   so for example '0,1,2,3' or '0:3' specifies the first four cores
 # * ~/results directory not present, this directory is used to gather the
@@ -46,10 +44,6 @@ exponent=(20000047 49005071 87068977 143472073 332220523)
 duration=(3600 7200 10800 14400 36000)
 testcount=${#fft[@]}
 
-# Potential cluster directories
-clusterpool=(primary secondary tertiary quaternary quinary senary septenary octonary)
-clusterpoolcount=${#clusterpool[@]}
-
 # Create results dir, or early exit if it already exists
 if [ -d ~/${resdir} ]; then
  echo "~/${resdir} directory already exists, exiting to avoid a mess"
@@ -58,31 +52,25 @@ else
  mkdir ~/${resdir}
 fi
 
-# Find cluster directories present
-cluster=()
-for (( j=0; j<${clusterpoolcount}; j++ )); do
- if [ -d ~/${clusterpool[$j]} ]; then cluster+=(${clusterpool[$j]}); fi
+# Check environment is in order and define clustercount
+clustercount=0
+if [ ! -f ~/c3tools/plotter ]; then echo "~/c3tools/plotter missing, possible setup error" && exit 1; fi
+while [ -d ~/$clustercount ]; do
+ if [ ! -e ~/$clustercount/mlucas.cfg ]; then echo "~/$clustercount/mlucas.cfg missing, possible setup error" && exit 1; fi
+ if [ ! -f ~/$clustercount/cpu ]; then echo "~/$clustercount/cpu missing, possible setup error" && exit 1; fi
 done
-
-clustercount=${#cluster[@]}
-
-# Check environment is in order
-if [ ! -f ~/c3tools/plotter ]; then echo "plotter missing, possible setup error" && exit 1; fi
-for (( j=0; j<${clustercount}; j++ )); do
- if [ ! -e ~/${cluster[$j]}/mlucas.cfg ]; then echo "${cluster[$j]} mlucas.cfg missing, possible setup error" && exit 1; fi
- if [ ! -f ~/${cluster[$j]}/cpu ]; then echo "${cluster[$j]} cpu config missing, possible setup error" && exit 1; fi
-done
+clustercount=$clustercount+1
 
 for (( j=0; j<${clustercount}; j++ )); do
  # Prep worktodo for benchmarking
- if [ -f ~/${cluster[$j]}/worktodo.ini ]; then rm ~/${cluster[$j]}/worktodo.ini; fi
- ln -s ~/worktodo.ini ~/${cluster[$j]}/worktodo.ini
+ if [ -f ~/$j/worktodo.ini ]; then rm ~/$j/worktodo.ini; fi
+ ln -s ~/worktodo.ini ~/$j/worktodo.ini
 
  # Gather mlucas.cfg into results
- cp ~/${cluster[$j]}/mlucas.cfg ~/${resdir}/mlucas.${cluster[$j]}.cfg
+ cp ~/$j/mlucas.cfg ~/${resdir}/mlucas.$j.cfg
 
  # Gather cluster topology into results 
- echo "${cluster[$j]}" >>~/${resdir}/cluster.cfg
+ cat ~/$j/cpu >>~/${resdir}/cluster.cfg
 done
 
 # Copy environment vitals into results
@@ -100,7 +88,7 @@ for (( i=0; i<${testcount}; i++ )); do
 
  # Start clusters
  for (( j=0; j<${clustercount}; j++ )); do
-  cd ~/${cluster[$j]} && ~/mlucas -cpu $(cat ~/${cluster[$j]}/cpu) &
+  cd ~/$j && ~/mlucas -cpu $(cat ~/$j/cpu) &
   sleep 1
  done
 
@@ -116,9 +104,9 @@ for (( i=0; i<${testcount}; i++ )); do
 
  for (( j=0; j<${clustercount}; j++ )); do
   # Gather results
-  mv ~/${cluster[$j]}/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.${cluster[$j]}.stat
+  mv ~/$j/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.$j.stat
   # Cleanup residuals
-  rm ~/${cluster[$j]}/*${exponent[$i]}
+  rm ~/$j/*${exponent[$i]}
  done
 
 done
@@ -126,7 +114,7 @@ done
 # Remove worktodo references
 rm ~/worktodo.ini
 for (( j=0; j<${clustercount}; j++ )); do
- rm ~/${cluster[$j]}/worktodo.ini
+ rm ~/$j/worktodo.ini
 done
 
 tar --create -f ~/${resdir}.tar ~/${resdir}
