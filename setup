@@ -25,12 +25,6 @@
 # This includes creating the cluster directories and generating the mlucas.cfg
 # files
 
-# Potential cluster directories
-clusterpool=(primary secondary tertiary quaternary quinary senary septenary octonary)
-clusterpoolcount=${#clusterpool[@]}
-
-if [ $# -gt 8 ]; then echo "Too many arguments, up to 8 clusters are supported" && exit 1; fi
-
 echo "Pass this script the devices cluster configuration and it will setup the"
 echo "environment accordingly. It creates the cluster directories, generates"
 echo "mlucas.cfg for each cluster with the other clusters under load, and edits"
@@ -47,43 +41,42 @@ echo "the other '-cpu 4,5'."
 # $$i (or any permutation tried) with for example i=1 is not equivalent to $1, so do it this way
 argindex=0
 for cpu in "$@"; do
- # Check that cluster directory doesn't exist
- if [ -d ~/${clusterpool[$argindex]} ]; then echo "${clusterpool[$argindex]} directory already exists, exiting to avoid making a mess" && exit 1; fi
- # Create directory
- mkdir ~/${clusterpool[$argindex]}
- # Read CPU info from args passed to this script
- echo "$cpu">~/${clusterpool[$argindex]}/cpu
- # Create a dummy mlucas.cfg and worktodo to keep this cluster busy whilst generating mlucas.cfg for other clusters
- echo "      1024  msec/iter =   42.42  ROE[avg,max] = [0.231563895, 0.281250000]  radices =  64 32 16 16  0  0  0  0  0  0">~/${clusterpool[$argindex]}/mlucas.cfg
- echo "Test=20000047">~/${clusterpool[$argindex]}/worktodo.ini
- argindex=$argindex+1
+	# Check that cluster directory doesn't exist
+	if [ -d ~/$argindex ]; then echo "$argindex directory already exists, exiting to avoid making a mess" && exit 1; fi
+	# Create directory
+	mkdir ~/$argindex
+	# Read CPU info from args passed to this script
+	echo "$cpu">~/$argindex/cpu
+	# Create a dummy mlucas.cfg and worktodo to keep this cluster busy whilst generating mlucas.cfg for other clusters
+	echo "      1024  msec/iter =   42.42  ROE[avg,max] = [0.231563895, 0.281250000]  radices =  64 32 16 16  0  0  0  0  0  0">~/$argindex/mlucas.cfg
+	echo "Test=20000047">~/$argindex/worktodo.ini
+	argindex=$argindex+1
 done
 
 # Create mlucas.cfg file for each cluster one at a time
 for (( i=0; i<$#; i++ )); do
- # Start dummy jobs on the other clusters to simulate realistic work conditions and to try to keep config generation on the correct cluster
- for (( j=0; j<$#; j++ )); do
-  if [ $i -ne $j ]; then
-   cd ~/${clusterpool[$j]} && ~/mlucas -cpu $(cat ~/${clusterpool[$j]}/cpu) &
-  fi
- done
- # Remove dummy mlucas.cfg
- rm ~/${clusterpool[$i]}/mlucas.cfg
- # Generate config
- cd ~/${clusterpool[$i]} && ~/mlucas -s m -cpu $(cat ~/${clusterpool[$i]}/cpu) && ~/mlucas -fftlen 18432 -iters 100 -cpu $(cat ~/${clusterpool[$i]}/cpu)
- # Kill dummy work
- pkill mlucas
- # Preserve calculated timings
- mv ~/${clusterpool[$i]}/mlucas.cfg ~/${clusterpool[$i]}/mlucas.cpy
- # Overwrite timings with dummy ones to ensure that erratic timings from
- # an aggressive governor does not cause inefficient FFTs to be used
- perl -pe 'BEGIN{$A=1;} s/ ...\d\.\d\d /$A++/ge' ~/${clusterpool[$i]}/mlucas.cpy | perl -pe 's/msec\/iter =/msec\/iter = /g' >~/${clusterpool[$i]}/mlucas.cfg
-
+	# Start dummy jobs on the other clusters to simulate realistic work conditions and to try to keep config generation on the correct cluster
+	for (( j=0; j<$#; j++ )); do
+		if [ $i -ne $j ]; then
+			cd ~/$j && ~/mlucas -cpu $(cat ~/$j/cpu) &
+		fi
+	done
+	# Remove dummy mlucas.cfg
+	rm ~/$i/mlucas.cfg
+	# Generate config
+	cd ~/$i && ~/mlucas -s m -cpu $(cat ~/$i/cpu) && ~/mlucas -fftlen 18432 -iters 100 -cpu $(cat ~/$i/cpu)
+	# Kill dummy work
+	pkill mlucas
+	# Preserve calculated timings
+	mv ~/$i/mlucas.cfg ~/$i/mlucas.cpy
+	# Overwrite timings with dummy ones to ensure that erratic timings from
+	# an aggressive governor does not cause inefficient FFTs to be used
+	perl -pe 'BEGIN{$A=1;} s/ ...\d\.\d\d /$A++/ge' ~/$i/mlucas.cpy | perl -pe 's/msec\/iter =/msec\/iter = /g' >~/$i/mlucas.cfg
 done
 
 # Cleanup files generated from dummy work
 for (( i=0; i<$#; i++ )); do
- rm ~/${clusterpool[$i]}/p20000047.stat ~/${clusterpool[$i]}/worktodo.ini ~/${clusterpool[$i]}/p20000047 ~/${clusterpool[$i]}/q20000047 ~/${clusterpool[$i]}/results.txt
+	rm ~/$i/p20000047.stat ~/$i/worktodo.ini ~/$i/p20000047 ~/$i/q20000047 ~/$i/results.txt
 done
 
 echo "End of setup."
