@@ -58,8 +58,9 @@ if [ ! -f ~/c3tools/plotter ]; then echo "~/c3tools/plotter missing, possible se
 while [ -d ~/$clustercount ]; do
 	if [ ! -e ~/$clustercount/mlucas.cfg ]; then echo "~/$clustercount/mlucas.cfg missing, possible setup error" && exit 1; fi
 	if [ ! -f ~/$clustercount/cpu ]; then echo "~/$clustercount/cpu missing, possible setup error" && exit 1; fi
+	clustercount=$((clustercount+1))
 done
-clustercount=$clustercount+1
+clustercount=$((clustercount+1))
 
 for (( j=0; j<${clustercount}; j++ )); do
 	# Prep worktodo for benchmarking
