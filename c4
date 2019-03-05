@@ -1,0 +1,165 @@
+#!/bin/bash
+
+# Copyright 2019 Matthew Ling (sillygit@protonmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# c4 - Cellphone Compute Cluster Controller
+#
+# Script to help admin a cluster of nodes over ssh. Add this script to your
+# daily cron jobs and define the nodes in ~/.c3/c4.cfg
+#
+# Aggregates nodes into a shared worktodo.ini and results.txt pool.
+# primenet.py can and probably should be used to automate sending/receiving
+# work. Run primenet.py with --workdir ~/.c3/ and --numcache double the total
+# number of clusters being administered
+
+# WARNING: Currently incomplete and untested. This script is not ready for
+# actual use yet
+
+# Find fresh job (one that is in pool's worktodo but not assigned to a node) and assign it
+function getfreshjob {
+ # $1 is the node, $2 is the cluster. Other variables are helpfully global
+ local i=$1
+ local j=$2
+
+ # Find top job in primenet worktodo that's not assigned
+ job=$(grep -v -x -f ~/.c3/worktodo.aggregate ~/.c3/worktodo.ini | head -1)
+
+ ret=0
+ if [ -z "$job" ]; then
+  echo "WARNING (${user[$i]}:$j): No available job to add to queue">>~/.c3/c4.log
+  ret=1
+ else
+  echo "$job available"
+  # Add job to cluster and copy 
+  ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "echo \"$job\">>~/$j/worktodo.ini && cp ~/$j/worktodo.ini ~/$j/worktodo.c4"
+  # Remove job from fresh list
+  echo "$job">>~/.c3/worktodo.aggregate
+ fi
+
+ return $ret
+}
+
+if [ ! -f ~/.c3/c4.cfg ]; then
+ # Config does not exist, create it
+ if [ ! -d ~/.c3 ]; then mkdir ~/.c3; fi
+ date>>~/.c3/c4.log
+ echo "Create c4 config and log file, add node information to config file">>~/.c3/c4.log
+
+ echo -e "{" >>~/.c3/c4.cfg
+ echo -e "\t\"tip\": \"JSON parser used is a little finicky and strict, avoid trailing commas\"," >>~/.c3/c4.cfg
+ echo -e "\t\"nodes\": " >>~/.c3/c4.cfg
+ echo -e "\t[" >>~/.c3/c4.cfg
+ echo -e "\t\t{" >>~/.c3/c4.cfg
+ echo -e "\t\t\t\"user\": \"\"," >>~/.c3/c4.cfg
+ echo -e "\t\t\t\"address\": \"\"," >>~/.c3/c4.cfg
+ echo -e "\t\t\t\"port\": \"\"," >>~/.c3/c4.cfg
+ echo -e "\t\t\t\"clusters\": 0" >>~/.c3/c4.cfg
+ echo -e "\t\t}" >>~/.c3/c4.cfg
+ echo -e "\t]" >>~/.c3/c4.cfg
+ echo -e "}" >>~/.c3/c4.cfg
+else
+ date>>~/.c3/c4.log
+fi
+
+# Node info from config file
+user=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .user' | tr '\n' ' ' | tr -d '\"'))
+address=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .address' | tr '\n' ' ' | tr -d '\"'))
+port=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .port' | tr '\n' ' ' | tr -d '\"'))
+clusters=($(cat ~/.c3/c4.cfg | jq -c '.nodes[] | .clusters' | tr '\n' ' ' | tr -d '\"'))
+
+donesomething=0
+
+# Validate config data
+if [ ${#user[@]} -ne ${#address[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
+if [ ${#user[@]} -ne ${#port[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
+if [ ${#user[@]} -ne ${#clusters[@]} ]; then echo "Error reading config file, every node needs the user, address, port, and cluster count defined">>~/.c3/c4.log && exit 1; fi
+
+echo "Pass 1"
+# First pass: Make an aggregate of all jobs in all node queues
+if [ -f ~/.c3/worktodo.aggregate ]; then rm ~/.c3/worktodo.aggregate; fi
+touch ~/.c3/worktodo.aggregate
+for (( i=0; i<${#user[@]}; i++ )); do
+ for (( j=0; j<${clusters[$i]}; j++ )); do
+  # Copy clusters worktodo into local temp file
+  if [ -f ~/.c3/worktodo.tmp ]; then rm ~/.c3/worktodo.tmp; fi
+  scp -P ${port[$i]} ${user[$i]}@${address[$i]}:~/$j/worktodo.ini ~/.c3/worktodo.tmp
+  if [ -f ~/.c3/worktodo.tmp ]; then cat ~/.c3/worktodo.tmp>>~/.c3/worktodo.aggregate; fi
+ done
+done
+
+echo "Pass 2"
+# Second pass: Check state of each cluster on every node in turn:
+# * If worktodo has zero jobs or does not exist, populate with two jobs and run mlucas. Whenever we add
+#   jobs to worktodo create a copy at worktodo.c4 so that we know which jobs get completed
+# * If worktodo has one job copy results to primenet results, remove top line of worktodo.c4 from primenet
+#   worktodo, find a job in primenet worktodo that's not in worktodo.aggregate and add it to the aggregate
+#   and this clusters worktodo
+# * If worktodo has two jobs, check that mlucas is running and start it if it's not
+for (( i=0; i<${#user[@]}; i++ )); do
+ for (( j=0; j<${clusters[$i]}; j++ )); do
+  # Create cluster worktodo if it doesn't exist
+  ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "touch ~/$j/worktodo.ini"
+  # Copy cluster worktodo to controller
+  scp -P ${port[$i]} ${user[$i]}@${address[$i]}:~/$j/worktodo.ini ~/.c3/worktodo.tmp
+
+  if [ -f ~/.c3/worktodo.tmp ]; then
+   # worktodo exists as it should, even if it's empty
+   if [ $(cat ~/.c3/worktodo.tmp | wc -l) -eq 1 ]; then
+   	# worktodo has one line, copy results and add another job
+   	donesomething=1
+
+   	# Copy results
+   	# Backup node results
+   	ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "cat ~/$j/results.txt>>~/$j/results.backup"
+   	# Transfer to controller
+   	scp -P ${port[$i]} ${user[$i]}@${address[$i]}:~/$j/results.txt ~/.c3/results.tmp
+   	# Add to primenet results
+   	cat ~/.c3/results.tmp>>~/.c3/results.txt
+   	# Delete from node
+   	ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "rm ~/$j/results.txt"
+
+   	# Add job
+   	getfreshjob $i $j
+   	echo "(${user[$i]}:$j): Job completed, copy results and add new job to queue">>~/.c3/c4.log
+   else
+    if [ $(cat ~/.c3/worktodo.tmp | wc -l) -eq 0 ]; then
+     # Worktodo is empty, add two jobs and start mlucas
+     donesomething=1
+     getfreshjob $i $j
+     getfreshjob $i $j
+     # Copy cpu to controller instead of using command substitution. There's probably a better way to do this
+     scp -P ${port[$i]} ${user[$i]}@${address[$i]}:~/$j/cpu ~/.c3/cpu.tmp
+     ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "cd ~/$j && ~/mlucas -cpu $(cat ~/.c3/cpu.tmp) &"
+     echo "(${user[$i]}:$j): Worktodo not present, create it and start mlucas">>~/.c3/c4.log
+    else
+     # worktodo is full, check that mlucas is running for the cluster and start it if it's not
+     if [ ps -FC mlucas | grep "cpu $(cat ~/$j/cpu) | wc -l" -eq 0 ]; then
+      donesomething=1
+      ssh -p ${port[$i]} ${user[$i]}@${address[$i]} "cd ~/$j && ~/mlucas -cpu $(cat ~/c3/cpu) &"
+      echo "(${user[$i]}:$j): Worktodo present but mlucas wasn't running. Started mlucas">>~/.c3/c4.log
+     fi
+    fi
+   fi
+  fi
+ done
+done
+
+if [ $donesomething -eq 0 ]; then echo "All clusters have full queues and mlucas is running, nothing to do">>~/.c3/c4.log; fi
+
+# Cleanup temp files
+if [ -f ~/.c3/cpu.tmp ]; then rm ~/.c3/cpu.tmp; fi
+if [ -f ~/.c3/worktodo.aggregate ]; then rm ~/.c3/worktodo.aggregate; fi
+if [ -f ~/.c3/worktodo.tmp ]; then rm ~/.c3/worktodo.tmp; fi
