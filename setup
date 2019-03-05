@@ -64,7 +64,7 @@ for (( i=0; i<$#; i++ )); do
 	# Remove dummy mlucas.cfg
 	rm ~/$i/mlucas.cfg
 	# Generate config
-	cd ~/$i && ~/mlucas -s m -cpu $(cat ~/$i/cpu) && ~/mlucas -fftlen 18432 -iters 100 -cpu $(cat ~/$i/cpu)
+	cd ~/$i && ~/mlucas -fftlen 1024 -iters 100 -cpu $(cat ~/$i/cpu) && ~/mlucas -s m -cpu $(cat ~/$i/cpu) && ~/mlucas -fftlen 18432 -iters 100 -cpu $(cat ~/$i/cpu)
 	# Kill dummy work
 	pkill mlucas
 	# Preserve calculated timings
