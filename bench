@@ -46,31 +46,31 @@ testcount=${#fft[@]}
 
 # Create results dir, or early exit if it already exists
 if [ -d ~/${resdir} ]; then
- echo "~/${resdir} directory already exists, exiting to avoid a mess"
- exit 1
+	echo "~/${resdir} directory already exists, exiting to avoid a mess"
+	exit 1
 else
- mkdir ~/${resdir}
+	mkdir ~/${resdir}
 fi
 
 # Check environment is in order and define clustercount
 clustercount=0
 if [ ! -f ~/c3tools/plotter ]; then echo "~/c3tools/plotter missing, possible setup error" && exit 1; fi
 while [ -d ~/$clustercount ]; do
- if [ ! -e ~/$clustercount/mlucas.cfg ]; then echo "~/$clustercount/mlucas.cfg missing, possible setup error" && exit 1; fi
- if [ ! -f ~/$clustercount/cpu ]; then echo "~/$clustercount/cpu missing, possible setup error" && exit 1; fi
+	if [ ! -e ~/$clustercount/mlucas.cfg ]; then echo "~/$clustercount/mlucas.cfg missing, possible setup error" && exit 1; fi
+	if [ ! -f ~/$clustercount/cpu ]; then echo "~/$clustercount/cpu missing, possible setup error" && exit 1; fi
 done
 clustercount=$clustercount+1
 
 for (( j=0; j<${clustercount}; j++ )); do
- # Prep worktodo for benchmarking
- if [ -f ~/$j/worktodo.ini ]; then rm ~/$j/worktodo.ini; fi
- ln -s ~/worktodo.ini ~/$j/worktodo.ini
+	# Prep worktodo for benchmarking
+	if [ -f ~/$j/worktodo.ini ]; then rm ~/$j/worktodo.ini; fi
+	ln -s ~/worktodo.ini ~/$j/worktodo.ini
 
- # Gather mlucas.cfg into results
- cp ~/$j/mlucas.cfg ~/${resdir}/mlucas.$j.cfg
+	# Gather mlucas.cfg into results
+	cp ~/$j/mlucas.cfg ~/${resdir}/mlucas.$j.cfg
 
- # Gather cluster topology into results 
- cat ~/$j/cpu >>~/${resdir}/cluster.cfg
+	# Gather cluster topology into results 
+	cat ~/$j/cpu >>~/${resdir}/cluster.cfg
 done
 
 # Copy environment vitals into results
@@ -80,41 +80,41 @@ cat /proc/version > ~/results/proc.version
 # Do tests
 for (( i=0; i<${testcount}; i++ )); do
 
- # Edit worktodo
- echo "Test=${exponent[$i]}" >~/worktodo.ini
+	# Edit worktodo
+	echo "Test=${exponent[$i]}" >~/worktodo.ini
 
- # Start plotter
- ~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
+	# Start plotter
+	~/c3tools/plotter "${resdir}/${fft[$i]}K.temps" &
 
- # Start clusters
- for (( j=0; j<${clustercount}; j++ )); do
-  cd ~/$j && ~/mlucas -cpu $(cat ~/$j/cpu) &
-  sleep 1
- done
+	# Start clusters
+	for (( j=0; j<${clustercount}; j++ )); do
+		cd ~/$j && ~/mlucas -cpu $(cat ~/$j/cpu) &
+		sleep 1
+	done
 
- # Sleep for test duration
- sleep 3
- date
- echo "Executing FFT ${fft[$i]}K, exponent ${exponent[$i]}, duration ~${duration[$i]} seconds"
- sleep ${duration[$i]}
+	# Sleep for test duration
+	sleep 3
+	date
+	echo "Executing FFT ${fft[$i]}K, exponent ${exponent[$i]}, duration ~${duration[$i]} seconds"
+	sleep ${duration[$i]}
 
- # Kill test
- pkill mlucas
- pkill plotter
+	# Kill test
+	pkill mlucas
+	pkill plotter
 
- for (( j=0; j<${clustercount}; j++ )); do
-  # Gather results
-  mv ~/$j/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.$j.stat
-  # Cleanup residuals
-  rm ~/$j/*${exponent[$i]}
- done
+	for (( j=0; j<${clustercount}; j++ )); do
+		# Gather results
+		mv ~/$j/p${exponent[$i]}.stat ~/${resdir}/${fft[$i]}K.$j.stat
+		# Cleanup residuals
+		rm ~/$j/*${exponent[$i]}
+	done
 
 done
 
 # Remove worktodo references
 rm ~/worktodo.ini
 for (( j=0; j<${clustercount}; j++ )); do
- rm ~/$j/worktodo.ini
+	rm ~/$j/worktodo.ini
 done
 
 tar --create -f ~/${resdir}.tar ~/${resdir}
