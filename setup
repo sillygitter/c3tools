@@ -25,9 +25,9 @@
 # This includes creating the cluster directories and generating the mlucas.cfg
 # files
 
-echo "Pass this script the devices cluster configuration and it will setup the"
-echo "environment accordingly. It creates the cluster directories, generates"
-echo "mlucas.cfg for each cluster with the other clusters under load, and edits"
+echo "Pass this script the worker configuration to use and it will set up the"
+echo "environment accordingly. It creates the worker directories, generates"
+echo "mlucas.cfg for each cluster with the other workers under load, and edits"
 echo "the timings to account for likely erroneous results likely generated as a"
 echo "result of an overly aggressive governor."
 echo ""
@@ -50,8 +50,10 @@ for cpu in "$@"; do
 	# Create a dummy mlucas.cfg and worktodo to keep this cluster busy whilst generating mlucas.cfg for other clusters
 	echo "      1024  msec/iter =   42.42  ROE[avg,max] = [0.231563895, 0.281250000]  radices =  64 32 16 16  0  0  0  0  0  0">~/$argindex/mlucas.cfg
 	echo "Test=20000047">~/$argindex/worktodo.ini
-	argindex=$argindex+1
+	argindex=$((argindex+1))
 done
+
+if [ ! -f ~/mlucas ]; then echo "Error: ~/mlucas not present, cannot generate mlucas.cfg" && exit 1; fi
 
 # Create mlucas.cfg file for each cluster one at a time
 for (( i=0; i<$#; i++ )); do
