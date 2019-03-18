@@ -14,12 +14,9 @@ This script takes a user-supplied cluster configuration and creates a working en
 * Edits the timings in the generated mlucas.cfg files to be contiguous
 
 ## bench script
-This script benchmarks with simultaneous tests on each cluster at key FFT lengths. The script takes ~20 hours to complete and puts all results in a tarball. The tests include:
-* One hour of simultaneous 1024K FFT
-* Two hours of simultaneous 2560K FFT
-* Three hours of simultaneous 4608K FFT
-* Four hours of simultaneous 7680K FFT
-* Ten hours of simultaneous 18432K FFT
+This script benchmarks with simultaneous worker tests at key FFT lengths and puts results into a tarball. The tests include:
+* Four hours of simultaneous 2560K FFT
+* Eight hours of simultaneous 5120K FFT
 From these results the combined throughput of the SoC at each FFT length can be calculated.
 
 ## c4 script - Cellphone Compute Cluster Controller
