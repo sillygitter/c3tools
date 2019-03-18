@@ -39,9 +39,9 @@
 resdir="results"
 
 # Test definitions
-fft=(1024 2560 4608 7680 18432)
-exponent=(20000047 49005071 87068977 143472073 332220523)
-duration=(3600 7200 10800 14400 36000)
+fft=(2560 5120)
+exponent=(49005071 95000011)
+duration=(14400 28800)
 testcount=${#fft[@]}
 
 # Create results dir, or early exit if it already exists
