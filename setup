@@ -38,7 +38,7 @@ echo "as 'setup 0:3 4,5', in which case one worker is executed with '-cpu 0:3',"
 echo "the other '-cpu 4,5'."
 
 # Install everything that may be required
-sudo apt install ssh git xz bzip2 lm-sensors
+sudo apt -y install ssh git xz bzip2 lm-sensors wget
 
 # Grab mlucas binary from the mlucas readme page if it's not present
 if [ ! -f ~/mlucas ]; then
@@ -48,7 +48,7 @@ fi
 
 # Grab c3tools from github if it's not already present
 if [ ! -d ~/c3tools ]; then
-	git -C ~/ clone http://github.com/sillygitter/c3tools
+	git -C ~/ clone https://github.com/sillygitter/c3tools
 fi
 
 # Prep environment for mlucas.cfg generation
