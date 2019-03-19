@@ -37,6 +37,20 @@ echo "four cores, the second using the 5th and 6th. It can equivalently be defin
 echo "as 'setup 0:3 4,5', in which case one worker is executed with '-cpu 0:3',"
 echo "the other '-cpu 4,5'."
 
+# Install everything that may be required
+sudo apt install ssh git xz bzip2 lm-sensors
+
+# Grab mlucas binary from the mlucas readme page if it's not present
+if [ ! -f ~/mlucas ]; then
+	wget -O - https://www.mersenneforum.org/mayer/src/C/Mlucas_v18_c2simd.bz2 | bzcat >~/mlucas
+	sudo chmod 777 ~/mlucas
+fi
+
+# Grab c3tools from github if it's not already present
+if [ ! -d ~/c3tools ]; then
+	git -C ~/ clone http://github.com/sillygitter/c3tools
+fi
+
 # Prep environment for mlucas.cfg generation
 # $$i (or any permutation tried) with for example i=1 is not equivalent to $1, so do it this way
 argindex=0
