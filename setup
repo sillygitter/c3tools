@@ -38,7 +38,7 @@ echo "as 'setup 0:3 4,5', in which case one worker is executed with '-cpu 0:3',"
 echo "the other '-cpu 4,5'."
 
 # Install everything that may be required
-sudo apt -y install ssh git xz bzip2 lm-sensors wget
+sudo apt -y install ssh git xz bzip2 lm-sensors wget python
 
 # Grab mlucas binary from the mlucas readme page if it's not present
 if [ ! -f ~/mlucas ]; then
